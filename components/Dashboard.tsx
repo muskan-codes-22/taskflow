@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { format } from 'date-fns';
 import { Plus, CheckCircle, Circle, Trash2, Calendar as CalIcon, Tag, Edit3 } from 'lucide-react';
 import { User, Task, Category } from '../types';
 import TaskModal from './TaskModal';
@@ -58,21 +59,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user, tasks, onAddTask, onUpdateT
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <div className="bg-neutral-950 border border-red-900/20 p-6 rounded-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+          <div className="absolute top-0 right-0 p-4 opacity-25 group-hover:scale-110 transition-transform">
             <CheckCircle size={48} className="text-red-600" />
           </div>
           <p className="text-neutral-500 font-semibold uppercase text-xs tracking-widest mb-1">Completed</p>
           <h3 className="text-4xl font-display text-white">{completedTasks.length}</h3>
         </div>
         <div className="bg-neutral-950 border border-red-900/20 p-6 rounded-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+          <div className="absolute top-0 right-0 p-4 opacity-25 group-hover:scale-110 transition-transform">
             <CalIcon size={48} className="text-red-600" />
           </div>
           <p className="text-neutral-500 font-semibold uppercase text-xs tracking-widest mb-1">Total Tasks</p>
           <h3 className="text-4xl font-display text-white">{tasks.length}</h3>
         </div>
         <div className="bg-neutral-950 border border-red-900/20 p-6 rounded-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+          <div className="absolute top-0 right-0 p-4 opacity-25 group-hover:scale-110 transition-transform">
             <Tag size={48} className="text-red-600" />
           </div>
           <p className="text-neutral-500 font-semibold uppercase text-xs tracking-widest mb-1">Categories</p>
@@ -161,7 +162,7 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, onEdit })
           <div className="flex items-center gap-4 mt-1 text-sm text-neutral-500">
             <span className="flex items-center gap-1">
               <CalIcon size={14} />
-              {task.date}
+              {task.date ? format(new Date(task.date), 'd MMM') : 'No Date'}
             </span>
             <span className="px-2 py-0.5 rounded bg-red-900/10 text-red-500 font-bold uppercase text-[10px] tracking-widest border border-red-600/20">
               {task.category}
