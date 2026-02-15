@@ -1,16 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
 import Dashboard from './components/Dashboard';
 import Layout from './components/Layout';
 import CalendarView from './components/CalendarView';
 import DatabaseErrorNotice from './components/DatabaseErrorNotice';
+
 import { User, Task } from './types';
+import MissionStatus from './components/MissionStatus';
 import { supabase } from './lib/supabase';
 
 const App: React.FC = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +27,9 @@ const App: React.FC = () => {
           email: session.user.email || ''
         });
       }
+      setLoading(false);
+    }).catch((error) => {
+      console.error("Error checking session:", error);
       setLoading(false);
     });
 
@@ -69,6 +75,7 @@ const App: React.FC = () => {
     await supabase.auth.signOut();
     setUser(null);
     setTasks([]);
+    navigate('/');
   };
 
   const addTask = async (taskData: Omit<Task, 'id' | 'completed'>) => {
@@ -140,8 +147,9 @@ const App: React.FC = () => {
     );
   }
 
+
   return (
-    <HashRouter>
+    <>
       {isTableMissing && user && <DatabaseErrorNotice />}
       <Routes>
         <Route path="/" element={!user ? <LandingPage /> : <Navigate to="/dashboard" />} />
@@ -158,14 +166,17 @@ const App: React.FC = () => {
                 onToggleTask={toggleTask} 
                 onDeleteTask={deleteTask} 
               />
-            ) : <Navigate to="/login" />
+            ) : <Navigate to="/" />
           } />
           <Route path="/calendar" element={
-            user ? <CalendarView tasks={tasks} /> : <Navigate to="/login" />
+            user ? <CalendarView tasks={tasks} /> : <Navigate to="/" />
+          } />
+          <Route path="/mission-status" element={
+            user ? <MissionStatus tasks={tasks} /> : <Navigate to="/" />
           } />
         </Route>
       </Routes>
-    </HashRouter>
+    </>
   );
 };
 
