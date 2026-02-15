@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Calendar, LogOut, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Calendar, LogOut, ChevronRight, Activity } from 'lucide-react';
 import { User } from '../types';
 
 interface LayoutProps {
@@ -10,11 +10,8 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ user, onLogout }) => {
-  const navigate = useNavigate();
-
   const handleLogout = () => {
     onLogout();
-    navigate('/');
   };
 
   return (
@@ -22,7 +19,7 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout }) => {
       {/* Sidebar */}
       <aside className="w-64 border-r border-red-900/30 flex flex-col bg-neutral-950">
         <div className="p-8">
-          <h1 className="text-2xl font-display text-red-600 tracking-tighter italic">TASKFLOW</h1>
+          <h1 className="text-5xl font-display text-red-600 tracking-tighter italic drop-shadow-[0_5px_5px_rgba(0,0,0,0.9)]">TASKFLOW</h1>
         </div>
 
         <nav className="flex-1 px-4 space-y-2">
@@ -47,6 +44,17 @@ const Layout: React.FC<LayoutProps> = ({ user, onLogout }) => {
           >
             <Calendar size={20} />
             <span className="font-semibold">Calendar</span>
+          </NavLink>
+          <NavLink 
+            to="/mission-status" 
+            className={({ isActive }) => 
+              `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                isActive ? 'bg-red-600 text-white shadow-[0_0_15px_rgba(255,0,0,0.4)]' : 'hover:bg-red-900/20 text-neutral-400 hover:text-white'
+              }`
+            }
+          >
+            <Activity size={20} />
+            <span className="font-semibold">Mission Status</span>
           </NavLink>
         </nav>
 
