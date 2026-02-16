@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { format } from 'date-fns';
-import { Plus, CheckCircle, Circle, Trash2, Calendar as CalIcon, Tag, Edit3 } from 'lucide-react';
+import { Plus, CheckCircle, Circle, Trash2, Calendar as CalIcon, Tag, Edit3, Clock } from 'lucide-react';
 import { User, Task, Category } from '../types';
 import TaskModal from './TaskModal';
 
@@ -164,6 +164,13 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete, onEdit })
               <CalIcon size={14} />
               {task.date ? format(new Date(task.date), 'd MMM') : 'No Date'}
             </span>
+            {(task.startTime || task.endTime) && (
+              <span className="flex items-center gap-1 text-neutral-400 text-xs">
+                <span className="hidden md:inline w-1 h-1 bg-red-600 rounded-full mx-1"></span>
+                <Clock size={12} />
+                {task.startTime || '??'} - {task.endTime || '??'}
+              </span>
+            )}
             <span className="px-2 py-0.5 rounded bg-red-900/10 text-red-500 font-bold uppercase text-[10px] tracking-widest border border-red-600/20">
               {task.category}
             </span>
