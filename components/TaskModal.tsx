@@ -1,21 +1,25 @@
-
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Category, Task } from '../types';
+import DatePicker from './DatePicker';
+import TimePicker from './TimePicker';
 
 interface TaskModalProps {
   isOpen: boolean;
   initialData?: Task | null;
+  initialDate?: string;
   onClose: () => void;
-  onSave: (task: { name: string; date: string; category: Category; description: string }) => void;
+  onSave: (task: { name: string; date: string; startTime?: string; endTime?: string; category: Category; description: string }) => void;
 }
 
 const categories: Category[] = ['Work', 'Personal', 'Health', 'Finance', 'Other'];
 
-const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, onClose, onSave }) => {
+const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, initialDate, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     name: '',
     date: new Date().toISOString().split('T')[0],
+    startTime: '',
+    endTime: '',
     category: 'Work' as Category,
     description: ''
   });
@@ -25,18 +29,22 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, onClose, onS
       setFormData({
         name: initialData.name,
         date: initialData.date,
+        startTime: initialData.startTime || '',
+        endTime: initialData.endTime || '',
         category: initialData.category,
         description: initialData.description || ''
       });
     } else {
       setFormData({
         name: '',
-        date: new Date().toISOString().split('T')[0],
+        date: initialDate || new Date().toISOString().split('T')[0],
+        startTime: '',
+        endTime: '',
         category: 'Work',
         description: ''
       });
     }
-  }, [initialData, isOpen]);
+  }, [initialData, initialDate, isOpen]);
 
   if (!isOpen) return null;
 
@@ -73,12 +81,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, onClose, onS
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Date</label>
-              <input 
-                type="date" 
-                required
-                className="w-full bg-black/40 border border-white/10 rounded-lg py-3 px-4 text-white focus:outline-none focus:border-red-600 transition-colors"
+              <DatePicker 
                 value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                onChange={(date) => setFormData({ ...formData, date })}
               />
             </div>
             <div className="space-y-1">
@@ -90,6 +95,25 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, onClose, onS
               >
                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Start Time</label>
+              <TimePicker 
+                value={formData.startTime}
+                onChange={(startTime) => setFormData({ ...formData, startTime })}
+                label="Start"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">End Time</label>
+              <TimePicker 
+                value={formData.endTime}
+                onChange={(endTime) => setFormData({ ...formData, endTime })}
+                label="End"
+              />
             </div>
           </div>
 
