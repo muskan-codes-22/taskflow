@@ -9,7 +9,7 @@ interface TaskModalProps {
   initialData?: Task | null;
   initialDate?: string;
   onClose: () => void;
-  onSave: (task: { name: string; date: string; startTime?: string; endTime?: string; category: Category; description: string }) => void;
+  onSave: (task: { name: string; date: string; start_time?: string; end_time?: string; due_time?: string | null; category: Category; description: string }) => void;
 }
 
 const categories: Category[] = ['Work', 'Personal', 'Health', 'Finance', 'Other'];
@@ -20,6 +20,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, initialDate,
     date: new Date().toISOString().split('T')[0],
     startTime: '',
     endTime: '',
+    dueTime: '',
     category: 'Work' as Category,
     description: ''
   });
@@ -29,8 +30,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, initialDate,
       setFormData({
         name: initialData.name,
         date: initialData.date,
-        startTime: initialData.startTime || '',
-        endTime: initialData.endTime || '',
+        startTime: initialData.start_time || '',
+        endTime: initialData.end_time || '',
+        dueTime: initialData.due_time ? new Date(initialData.due_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '',
         category: initialData.category,
         description: initialData.description || ''
       });
@@ -40,6 +42,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, initialDate,
         date: initialDate || new Date().toISOString().split('T')[0],
         startTime: '',
         endTime: '',
+        dueTime: '',
         category: 'Work',
         description: ''
       });
@@ -50,7 +53,32 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, initialDate,
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Combine date and startTime for due_time if both exist
+    // Combine date and dueTime for due_time if both exist
+    let due_time: string | undefined;
+    if (formData.date && formData.dueTime) {
+      try {
+        // Create a date object and get ISO string
+        // Assuming local time input, storing as UTC ISO string is standard
+        const dateTime = new Date(`${formData.date}T${formData.dueTime}`);
+        if (!isNaN(dateTime.getTime())) {
+          due_time = dateTime.toISOString();
+        }
+      } catch (err) {
+        console.error("Invalid date/time format", err);
+      }
+    }
+
+    onSave({
+      name: formData.name,
+      date: formData.date,
+      start_time: formData.startTime,
+      end_time: formData.endTime,
+      due_time,
+      category: formData.category,
+      description: formData.description
+    });
   };
 
   return (
@@ -98,7 +126,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, initialDate,
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Start Time</label>
               <TimePicker 
@@ -113,6 +141,14 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initialData, initialDate,
                 value={formData.endTime}
                 onChange={(endTime) => setFormData({ ...formData, endTime })}
                 label="End"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Due Time</label>
+              <TimePicker 
+                value={formData.dueTime}
+                onChange={(dueTime) => setFormData({ ...formData, dueTime })}
+                label="Due"
               />
             </div>
           </div>
