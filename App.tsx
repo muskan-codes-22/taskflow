@@ -169,7 +169,7 @@ const App: React.FC = () => {
             ) : <Navigate to="/" />
           } />
           <Route path="/calendar" element={
-            user ? <CalendarView tasks={tasks} /> : <Navigate to="/" />
+            user ? <CalendarView tasks={tasks} onAddTask={addTask} /> : <Navigate to="/" />
           } />
           <Route path="/mission-status" element={
             user ? <MissionStatus tasks={tasks} /> : <Navigate to="/" />
