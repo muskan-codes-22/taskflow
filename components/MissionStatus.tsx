@@ -1,57 +1,80 @@
 
 import React, { useMemo } from 'react';
 import { Task } from '../types';
-import { format, subDays, eachDayOfInterval, isSameDay, startOfYear, endOfYear } from 'date-fns';
+import { format, subDays, eachDayOfInterval, isSameDay, startOfYear, endOfYear, startOfMonth } from 'date-fns';
 import { PieChart, Activity } from 'lucide-react';
+import ProgressRing from './ProgressRing';
 
 interface MissionStatusProps {
   tasks: Task[];
 }
 
 const MissionStatus: React.FC<MissionStatusProps> = ({ tasks }) => {
-  // --- Area Chart Data Prep ---
-  const areaChartData = useMemo(() => {
+  // --- Metrics Calculation ---
+  const metrics = useMemo(() => {
     const today = new Date();
-    const last30Days = eachDayOfInterval({
-      start: subDays(today, 29),
-      end: today
-    });
+    
+    // 1. Mission Completion (Today)
+    const todayTasks = tasks.filter(t => t.date && isSameDay(new Date(t.date), today));
+    const todayCompleted = todayTasks.filter(t => t.completed).length;
+    const todayTotal = todayTasks.length;
+    const completionRate = todayTotal > 0 ? Math.round((todayCompleted / todayTotal) * 100) : 0;
 
-    return last30Days.map(day => {
-      const dayTasks = tasks.filter(t => t.date && isSameDay(new Date(t.date), day));
-      const completed = dayTasks.filter(t => t.completed).length;
-      const pending = dayTasks.filter(t => !t.completed).length;
-      return {  
-        date: format(day, 'MMM dd'),
-        completed,
-        pending,
-        total: completed + pending
-      };
-    });
+    // 2. Consistency (Streak)
+    // Simple streak: consecutive days going back from today (or yesterday) with at least 1 completed task
+    let streak = 0;
+    let checkDate = today;
+    // If no tasks today yet, maybe check yesterday first? 
+    // Logic: If today has completed tasks, start check from today. 
+    // If today represents a "miss" so far (0 completed), check if yesterday was a hit to continue streak.
+    const todayHasCompletion = tasks.some(t => t.date && isSameDay(new Date(t.date), today) && t.completed);
+    if (!todayHasCompletion) {
+        checkDate = subDays(today, 1);
+    }
+    
+    while (true) {
+        const hasCompletion = tasks.some(t => t.date && isSameDay(new Date(t.date), checkDate) && t.completed);
+        if (hasCompletion) {
+            streak++;
+            checkDate = subDays(checkDate, 1);
+        } else {
+            break;
+        }
+    }
+
+    // Consistency % (Last 7 Days)
+    const last7Days = eachDayOfInterval({ start: subDays(today, 6), end: today });
+    const activeDays = last7Days.filter(day => 
+        tasks.some(t => t.date && isSameDay(new Date(t.date), day) && t.completed)
+    ).length;
+    const consistencyScore = Math.round((activeDays / 7) * 100);
+
+
+    // 3. Focus / Deep Work (Estimated)
+    // Assume 45 mins per completed task
+    const totalCompletedTasks = tasks.filter(t => t.completed).length; // All time or today? Prompt implies "Working" metrics.
+    // Let's do Today's focus for the ring
+    const todayFocusMinutes = todayCompleted * 45;
+    const focusGoalMinutes = 4 * 60; // Goal: 4 hours
+    const focusProgress = Math.min(Math.round((todayFocusMinutes / focusGoalMinutes) * 100), 100);
+
+
+    // 4. Performance Score (Gamified)
+    // Weighted average: 40% Completion, 40% Consistency, 20% Volume
+    const score = Math.round((completionRate * 0.4) + (consistencyScore * 0.4) + (Math.min(todayCompleted * 10, 20))); // Just a heuristic
+
+    return {
+        todayCompleted,
+        todayTotal,
+        completionRate,
+        streak,
+        consistencyScore,
+        todayFocusMinutes,
+        focusProgress,
+        score
+    };
   }, [tasks]);
 
-  // Max value for scaling
-  const maxTasks = Math.max(...areaChartData.map(d => d.total), 5); // Minimum scale of 5 for aesthetics
-
-  // SVG Points for Area Chart
-  const chartHeight = 250;
-  const chartWidth = 800;
-  const pointGap = chartWidth / (areaChartData.length - 1);
-
-  const completedPath = areaChartData.map((d, i) => {
-    const x = i * pointGap;
-    const y = chartHeight - (d.completed / maxTasks) * chartHeight;
-    return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
-  }).join(' ');
-
-  const pendingPath = areaChartData.map((d, i) => {
-    const x = i * pointGap;
-    const y = chartHeight - ((d.completed + d.pending) / maxTasks) * chartHeight; // Stacked (Total)
-    return `${i === 0 ? 'M' : 'L'} ${x},${y}`;
-  }).join(' ');
-
-  // Base line for area closing
-  const areaClose = `L ${chartWidth},${chartHeight} L 0,${chartHeight} Z`;
 
   // --- Heatmap Data Prep ---
   const heatmapData = useMemo(() => {
@@ -84,99 +107,171 @@ const MissionStatus: React.FC<MissionStatusProps> = ({ tasks }) => {
         <p className="text-neutral-400 mt-2">Tactical analysis of mission performance and completion rates.</p>
       </header>
 
-      {/* Area Chart Section */}
-      <section className="bg-neutral-950 border border-neutral-800 rounded-2xl p-8 relative overflow-hidden">
-        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          <PieChart size={20} className="text-red-600" />
-          Mission Velocity (Last 30 Days)
-        </h3>
+      {/* Progress Rings Section */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div className="h-[250px] w-full relative">
-          {/* Y-Axis Grid Lines */}
-          <div className="absolute inset-0 flex flex-col justify-between text-xs text-neutral-600 pointer-events-none">
-            {[100, 75, 50, 25, 0].map((p, i) => (
-              <div key={i} className="flex items-center w-full border-b border-white/5 h-full last:border-0">
-                <span className="w-8">{Math.round(maxTasks * (p / 100))}</span>
-              </div>
-            ))}
-          </div>
-
-          <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible preserve-3d">
-            <defs>
-              <linearGradient id="gradientRed" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#dc2626" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#dc2626" stopOpacity="0" />
-              </linearGradient>
-              <linearGradient id="gradientGray" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#404040" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#404040" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-
-            {/* Total Load Area (Pending + Completed) - Shown in Gray */}
-            <path 
-              d={`${pendingPath} ${areaClose}`} 
-              fill="url(#gradientGray)" 
-              className="transition-all duration-1000 ease-out"
-            />
-            <path 
-              d={pendingPath} 
-              fill="none" 
-              stroke="#525252" 
-              strokeWidth="2"
-              strokeLinecap="round"
-              className="drop-shadow-[0_0_10px_rgba(82,82,82,0.5)]"
-            />
-
-            {/* Completed Area (Red) - Drawn on top */}
-            <path 
-              d={`${completedPath} ${areaClose}`} 
-              fill="url(#gradientRed)" 
-              className="transition-all duration-1000 ease-out delay-100"
-            />
-            <path 
-              d={completedPath} 
-              fill="none" 
-              stroke="#dc2626" 
-              strokeWidth="3"
-              strokeLinecap="round"
-              className="drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]"
-            />
-          </svg>
+        {/* Main Ring: Mission Completion */}
+        <div className="lg:col-span-1 bg-neutral-950 border border-neutral-800 rounded-2xl p-8 flex flex-col items-center justify-center relative shadow-[0_0_30px_rgba(220,38,38,0.1)]">
+            <h3 className="text-sm font-bold text-neutral-500 uppercase tracking-widest mb-8 absolute top-8">Mission Status</h3>
+            <ProgressRing 
+                radius={120} 
+                stroke={12} 
+                progress={metrics.completionRate} 
+                color="#dc2626"
+                trackColor="#171717"
+            >
+                <div className="flex flex-col items-center">
+                    <span className="text-6xl font-display text-white font-bold tracking-tighter">
+                        {metrics.completionRate}%
+                    </span>
+                    <span className="text-neutral-400 mt-2 font-medium">
+                        {metrics.todayCompleted} / {metrics.todayTotal} Tasks
+                    </span>
+                    <div className="mt-4 px-3 py-1 bg-red-900/20 border border-red-900/50 rounded-full text-xs text-red-500 font-bold uppercase tracking-wider">
+                        {metrics.completionRate === 100 ? 'Mission Complete' : 'In Progress'}
+                    </div>
+                </div>
+            </ProgressRing>
         </div>
-        
-        {/* Legend */}
-        <div className="flex justify-center gap-8 mt-4">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-red-600 rounded-full shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
-            <span className="text-sm text-neutral-400">Completed Missions</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-neutral-600 rounded-full"></div>
-            <span className="text-sm text-neutral-400">Total Workload</span>
-          </div>
+
+        {/* Secondary Rings Grid */}
+        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Consistency Ring */}
+            <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col items-center justify-center">
+                 <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-6">Consistency</h4>
+                 <ProgressRing 
+                    radius={80} 
+                    stroke={8} 
+                    progress={metrics.consistencyScore} 
+                    color="#ea580c" // Orange for streak
+                    trackColor="#171717" // match bg-neutral-900
+                >
+                    <div className="flex flex-col items-center">
+                        <span className="text-3xl font-display text-white font-bold">{metrics.streak} Day</span>
+                        <span className="text-xs text-neutral-500 uppercase tracking-wider mt-1">Streak</span>
+                    </div>
+                </ProgressRing>
+                <p className="mt-6 text-sm text-neutral-400 text-center">
+                    {metrics.consistencyScore}% active in last 7 days
+                </p>
+            </div>
+
+            {/* Focus Ring */}
+            <div className="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex flex-col items-center justify-center">
+                 <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-6">Deep Work (Est.)</h4>
+                 <ProgressRing 
+                    radius={80} 
+                    stroke={8} 
+                    progress={metrics.focusProgress} 
+                    color="#2563eb" // Blue for focus
+                    trackColor="#171717"
+                >
+                    <div className="flex flex-col items-center">
+                        <span className="text-3xl font-display text-white font-bold">
+                            {Math.floor(metrics.todayFocusMinutes / 60)}h {metrics.todayFocusMinutes % 60}m
+                        </span>
+                        <span className="text-xs text-neutral-500 uppercase tracking-wider mt-1">Focused</span>
+                    </div>
+                </ProgressRing>
+                <p className="mt-6 text-sm text-neutral-400 text-center">
+                    Estimated time based on tasks
+                </p>
+            </div>
+
+            {/* Performance Score Ring */}
+            <div className="md:col-span-2 bg-neutral-950 border border-neutral-800 rounded-2xl p-6 flex items-center justify-between px-12">
+                <div>
+                    <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2">System Score</h4>
+                    <div className="text-5xl font-display text-white italic tracking-tighter">
+                        LEVEL {Math.max(1, Math.floor(metrics.score / 10))}
+                    </div>
+                    <p className="text-neutral-400 mt-2 text-sm">Based on overall performance metrics.</p>
+                </div>
+                <ProgressRing 
+                    radius={60} 
+                    stroke={6} 
+                    progress={metrics.score} 
+                    color="#16a34a" // Green for score
+                    trackColor="#171717"
+                >
+                    <div className="flex flex-col items-center">
+                        <span className="text-2xl font-display text-white font-bold">{metrics.score}</span>
+                    </div>
+                </ProgressRing>
+            </div>
+
         </div>
       </section>
 
       {/* Heatmap Section */}
-      <section className="bg-neutral-950 border border-neutral-800 rounded-2xl p-8">
-        <h3 className="text-xl font-bold text-white mb-6">Mission Density (Year View)</h3>
-        <div className="flex flex-wrap gap-1">
-            {heatmapData.map((data, index) => (
-              <div 
-                key={index}
-                title={`${format(data.date, 'MMM dd, yyyy')}: ${data.count} tasks`}
-                className={`w-3 h-3 rounded-sm ${getIntensityClass(data.count)} transition-colors hover:ring-1 hover:ring-white cursor-pointer`}
-              />
-            ))}
+      <section className="bg-neutral-950 border border-neutral-800 rounded-2xl p-8 overflow-x-auto">
+        <h3 className="text-xl font-bold text-white mb-6">Mission Density</h3>
+        
+        <div className="min-w-max">
+          {/* Month Labels */}
+          <div className="flex text-xs text-neutral-500 mb-2">
+            {eachDayOfInterval({ start: startOfYear(new Date()), end: endOfYear(new Date()) })
+              .filter((date, i) => i % 7 === 0) // Get start of each week
+              .map((date, i) => {
+                const isStartOfMonth = i === 0 || isSameDay(date, startOfMonth(date)) || date.getDate() <= 7;
+                // Simple heuristic to show month label roughly where the month starts
+                // We show a label if it's the first week of the month
+                const showLabel = date.getDate() <= 7;
+                return (
+                  <div key={i} className="w-3 mx-[1px]" style={{ width: '12px' }}>
+                    {showLabel ? format(date, 'MMM') : ''}
+                  </div>
+                );
+              })}
+          </div>
+
+          <div className="grid grid-rows-7 grid-flow-col gap-[2px]">
+            {/* Days of week labels (hidden or minimal) */}
+            {/* We can just render the boxes directly. The grid-rows-7 will force them into S M T W T F S order naturally if start date is aligned to Sunday */}
+            {(() => {
+                // Align start date to Sunday to ensure grid flows correctly top-to-bottom (Sun-Sat)
+                const today = new Date();
+                const yearStart = startOfYear(today);
+                const yearEnd = endOfYear(today);
+                // Adjust start to previous Sunday
+                const calendarStart = subDays(yearStart, yearStart.getDay());
+                
+                const days = eachDayOfInterval({ 
+                    start: calendarStart, 
+                    end: yearEnd 
+                });
+
+                return days.map((day, index) => {
+                    // Check if day is actually in the current year for data purposes (optional, but cleaner)
+                    const isCurrentYear = day.getFullYear() === today.getFullYear();
+                    const count = isCurrentYear 
+                        ? tasks.filter(t => t.date && isSameDay(new Date(t.date), day)).length
+                        : 0;
+
+                    const dayDetails = isCurrentYear 
+                        ? `${format(day, 'MMM dd, yyyy')}: ${count} missions`
+                        : '';
+
+                    return (
+                        <div 
+                            key={index}
+                            title={dayDetails}
+                            className={`w-3 h-3 rounded-[2px] ${isCurrentYear ? getIntensityClass(count) : 'bg-transparent'} transition-colors hover:ring-1 hover:ring-white cursor-pointer`}
+                        />
+                    );
+                });
+            })()}
+          </div>
         </div>
+
         <div className="flex items-center gap-2 mt-4 text-xs text-neutral-500 justify-end">
             <span>Less</span>
-            <div className="w-3 h-3 bg-neutral-900 rounded-sm"></div>
-            <div className="w-3 h-3 bg-red-900/40 rounded-sm"></div>
-            <div className="w-3 h-3 bg-red-800/60 rounded-sm"></div>
-            <div className="w-3 h-3 bg-red-700/80 rounded-sm"></div>
-            <div className="w-3 h-3 bg-red-600 rounded-sm"></div>
+            <div className="w-3 h-3 bg-neutral-900 rounded-[2px]"></div>
+            <div className="w-3 h-3 bg-red-900/40 rounded-[2px]"></div>
+            <div className="w-3 h-3 bg-red-800/60 rounded-[2px]"></div>
+            <div className="w-3 h-3 bg-red-700/80 rounded-[2px]"></div>
+            <div className="w-3 h-3 bg-red-600 rounded-[2px]"></div>
             <span>More</span>
         </div>
       </section>
