@@ -28,7 +28,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, onAddTask }) => {
     setIsModalOpen(true);
   };
 
-  const handleSaveTask = (taskData: { name: string; date: string; startTime?: string; endTime?: string; category: Category; description: string }) => {
+  const handleSaveTask = (taskData: Omit<Task, 'id' | 'completed'>) => {
     onAddTask(taskData);
     setIsModalOpen(false);
   };
