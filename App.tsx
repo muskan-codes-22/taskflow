@@ -79,8 +79,8 @@ const App: React.FC = () => {
   };
 
   const addTask = async (taskData: Omit<Task, 'id' | 'completed'>) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
     const { data, error } = await supabase
       .from('tasks')
@@ -88,7 +88,7 @@ const App: React.FC = () => {
         { 
           ...taskData, 
           completed: false,
-          user_id: session.user.id
+          user_id: user.id
         }
       ])
       .select();
