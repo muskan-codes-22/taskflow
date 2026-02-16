@@ -13,6 +13,9 @@ CREATE TABLE public.tasks (
     user_id UUID REFERENCES auth.users(id) NOT NULL,
     name TEXT NOT NULL,
     date DATE NOT NULL,
+    start_time TEXT,
+    end_time TEXT,
+    due_time TIMESTAMP WITH TIME ZONE,
     category TEXT NOT NULL,
     description TEXT,
     completed BOOLEAN DEFAULT FALSE
