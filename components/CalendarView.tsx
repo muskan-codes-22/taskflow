@@ -1,13 +1,17 @@
-
-import React from 'react';
-import { Task } from '../types';
+import React, { useState } from 'react';
+import { Task, Category } from '../types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay, startOfWeek, endOfWeek } from 'date-fns';
+import TaskModal from './TaskModal';
 
 interface CalendarViewProps {
   tasks: Task[];
+  onAddTask: (task: Omit<Task, 'id' | 'completed'>) => void;
 }
 
-const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ tasks, onAddTask }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
   const today = new Date();
   const monthStart = startOfMonth(today);
   const monthEnd = endOfMonth(monthStart);
@@ -19,11 +23,21 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
     end: calendarEnd
   });
 
+  const handleDayClick = (day: Date) => {
+    setSelectedDate(day);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveTask = (taskData: { name: string; date: string; startTime?: string; endTime?: string; category: Category; description: string }) => {
+    onAddTask(taskData);
+    setIsModalOpen(false);
+  };
+
   return (
     <div className="max-w-6xl mx-auto animate-in fade-in duration-500">
       <header className="mb-12">
         <h2 className="text-4xl font-display text-white tracking-tight italic uppercase">{format(today, 'MMMM yyyy')}</h2>
-        <p className="text-neutral-400 mt-2">Mission schedule for the current operational cycle.</p>
+        <p className="text-neutral-400 mt-2">Mission schedule for the current operational cycle. Select a date to deploy a new mission.</p>
       </header>
 
       <div className="bg-neutral-950 border border-red-900/20 rounded-2xl overflow-hidden shadow-2xl">
@@ -45,12 +59,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
             return (
               <div 
                 key={idx} 
-                className={`border-r border-b border-red-900/10 p-2 min-h-[120px] transition-colors ${
+                onClick={() => handleDayClick(day)}
+                className={`border-r border-b border-red-900/10 p-2 min-h-[120px] transition-colors cursor-pointer group ${
                   !isCurrentMonth ? 'bg-black opacity-25' : 'bg-neutral-950 hover:bg-red-900/5'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className={`text-sm font-bold ${isToday(day) ? 'bg-red-600 text-white w-7 h-7 flex items-center justify-center rounded-full' : 'text-neutral-500'}`}>
+                  <span className={`text-sm font-bold ${isToday(day) ? 'bg-red-600 text-white w-7 h-7 flex items-center justify-center rounded-full' : 'text-neutral-500 group-hover:text-white transition-colors'}`}>
                     {format(day, 'd')}
                   </span>
                 </div>
@@ -76,6 +91,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks }) => {
           })}
         </div>
       </div>
+
+      <TaskModal 
+        isOpen={isModalOpen}
+        initialDate={selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveTask}
+      />
     </div>
   );
 };
